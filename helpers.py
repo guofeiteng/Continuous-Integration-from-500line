@@ -7,3 +7,4 @@ def communicate(host, port, request):
     response = s.recv(1024)
     s.close()
     return response
+

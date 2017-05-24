@@ -8,3 +8,4 @@ run_or_fail() {
     exit 1
   fi
 }
+

@@ -9,10 +9,10 @@ import time
 
 import helpers
 
-def poll ():
+def poll():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dispatcher-server", help="dispatcher host:port," \
-                        "by default=""localhost:8888", action="store")
+                                                    "by default=""localhost:8888", action="store")
     parser.add_argument("repo", metavar="REPO", type=str,
                         help="path to the repository this will observe")
     args = parser.parse_args()

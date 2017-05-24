@@ -8,9 +8,10 @@ import threading
 
 import helpers
 
-# shared dispatcher code
+
+# Shared dispatcher code
 def dispatch_tests(server, commit_id):
-    #  usually we don't run this forever
+    # NOTE: usually we don't run this forever
     while True:
         print "trying to dispatch to runners"
         for runner in server.runners:
@@ -25,21 +26,26 @@ def dispatch_tests(server, commit_id):
                 return
         time.sleep(2)
 
+
 class ThreadingTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
-    runners = [] # keeps track of test runner pool
-    dead = False # indicate to other threads that we are no longer running
-    dispatched_commits = {} # keeps track of commits we dispatched
-    pending_commits = [] # keeps track of commits we have yet to dispatch
+    runners = [] # Keeps track of test runner pool
+    dead = False # Indicate to other threads that we are no longer running
+    dispatched_commits = {} # Keeps track of commits we dispatched
+    pending_commits = [] # Keeps track of commits we have yet to dispatch
 
 
 class DispatcherHandler(SocketServer.BaseRequestHandler):
-    # The RequestHandler class for our dispatcher.
-    # This will dispatch test runners against the incoming commit
-    # and handle their requests and test results
+    """
+    The RequestHandler class for our dispatcher.
+    This will dispatch test runners against the incoming commit
+    and handle their requests and test results
+    """
+
     command_re = re.compile(r"(\w+)(:.+)*")
     BUF_SIZE = 1024
 
     def handle(self):
+        # self.request is the TCP socket connected to the client
         self.data = self.request.recv(self.BUF_SIZE).strip()
         command_groups = self.command_re.match(self.data)
         if not command_groups:
@@ -54,7 +60,7 @@ class DispatcherHandler(SocketServer.BaseRequestHandler):
             print "register"
             address = command_groups.group(2)
             host, port = re.findall(r":(\w*)", address)
-            runner = {"host": host, "port": port}
+            runner = {"host": host, "port":port}
             self.server.runners.append(runner)
             self.request.sendall("OK")
         elif command == "dispatch":
@@ -90,25 +96,29 @@ class DispatcherHandler(SocketServer.BaseRequestHandler):
 
 def serve():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--host", help="dispatcher's host, default use localhost",
-                        default="localhost", action="store")
-    parser.add_argument("--port", help="dispatcher's port, default 8888",
-                        default=8888, action="store")
+    parser.add_argument("--host",
+                        help="dispatcher's host, by default it uses localhost",
+                        default="localhost",
+                        action="store")
+    parser.add_argument("--port",
+                        help="dispatcher's port, by default it uses 8888",
+                        default=8888,
+                        action="store")
     args = parser.parse_args()
 
-    # create the server
+    # Create the server
     server = ThreadingTCPServer((args.host, int(args.port)), DispatcherHandler)
     print 'serving on %s:%s' % (args.host, int(args.port))
-
-    # create a thread to check the runner pool
+    # Create a thread to check the runner pool
     def runner_checker(server):
         def manage_commit_lists(runner):
-            for commit, assigned_runner in server.dispatched_commits.iteritem():
+            for commit, assigned_runner in server.dispatched_commits.iteritems():
                 if assigned_runner == runner:
                     del server.dispatched_commits[commit]
                     server.pending_commits.append(commit)
                     break
             server.runners.remove(runner)
+
         while not server.dead:
             time.sleep(1)
             for runner in server.runners:
@@ -123,10 +133,10 @@ def serve():
                 except socket.error as e:
                     manage_commit_lists(runner)
 
-    # this will start tests that failed
+    # this will kick off tests that failed
     def redistribute(server):
         while not server.dead:
-            for commit in server.pending_commits
+            for commit in server.pending_commits:
                 print "running redistribute"
                 print server.pending_commits
                 dispatch_tests(server, commit)
@@ -145,6 +155,7 @@ def serve():
         server.dead = True
         runner_heartbeat.join()
         redistributor.join()
+
 
 if __name__ == "__main__":
     serve()
